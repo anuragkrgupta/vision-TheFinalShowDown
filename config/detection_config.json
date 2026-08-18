@@ -1,0 +1,20 @@
+{
+  "target_fps": 5.0,
+  "soak_test_duration_minutes": 30,
+  "temporal_smoothing": {
+    "n_frames": 3,
+    "m_required": 2,
+    "cooldown_frames": 5
+  },
+  "target_classes": [
+    "person",
+    "car",
+    "bicycle",
+    "motorcycle",
+    "bus",
+    "train",
+    "truck",
+    "traffic light",
+    "stop sign"
+  ]
+}

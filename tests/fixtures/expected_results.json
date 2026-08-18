@@ -1,0 +1,101 @@
+{
+    "bus_street.jpg": {
+        "expected_classes": [
+            "bus",
+            "person",
+            "stop sign"
+        ]
+    },
+    "ChatGPT Image Aug 18, 2026, 05_24_03 PM.png": {
+        "expected_classes": []
+    },
+    "ChatGPT Image Aug 18, 2026, 05_31_28 PM.png": {
+        "expected_classes": [
+            "bus",
+            "car",
+            "motorcycle",
+            "person",
+            "truck"
+        ]
+    },
+    "d87f0cc4-f2a4-4401-86b4-15.png": {
+        "expected_classes": []
+    },
+    "d87f0cc4-f2a4-4401-86b4-3d027ab6c5f911.png": {
+        "expected_classes": []
+    },
+    "d87f0cc4-f2a4-4401-86b4-3d027ab6c5f912.png": {
+        "expected_classes": []
+    },
+    "d87f0cc4-f2a4-4401-86b4-3d027ab6c5f913.png": {
+        "expected_classes": []
+    },
+    "d87f0cc4-f2a4-4401-86b4-3d027ab6c5f914.png": {
+        "expected_classes": [
+            "car",
+            "motorcycle",
+            "person",
+            "truck"
+        ]
+    },
+    "d87f0cc4-f2a4-4401-86b4-3d027ab6c5f916.png": {
+        "expected_classes": [
+            "car",
+            "person"
+        ]
+    },
+    "Gemini_Generated_Image_92l4u792l4u792l4.png": {
+        "expected_classes": []
+    },
+    "Gemini_Generated_Image_aa3o5taa3o5taa3o.png": {
+        "expected_classes": [
+            "bicycle",
+            "car",
+            "person",
+            "traffic light",
+            "truck"
+        ]
+    },
+    "Gemini_Generated_Image_n30f8ln30f8ln30f.png": {
+        "expected_classes": [
+            "person"
+        ]
+    },
+    "Gemini_Generated_Image_nw1wr0nw1wr0nw1w.png": {
+        "expected_classes": [
+            "bus",
+            "car",
+            "person",
+            "stop sign",
+            "traffic light"
+        ]
+    },
+    "Gemini_Generated_Image_pc4gn4pc4gn4pc4g11.png": {
+        "expected_classes": [
+            "person"
+        ]
+    },
+    "Gemini_Generated_Image_pc4gn4pc4gn4pc4g12.png": {
+        "expected_classes": []
+    },
+    "Gemini_Generated_Image_pc4gn4pc4gn4pc4g13.png": {
+        "expected_classes": [
+            "bicycle",
+            "bus",
+            "car",
+            "person",
+            "traffic light"
+        ]
+    },
+    "Gemini_Generated_Image_pc4gn4pc4gn4pc4g14.png": {
+        "expected_classes": [
+            "car",
+            "person"
+        ]
+    },
+    "people_zidane.jpg": {
+        "expected_classes": [
+            "person"
+        ]
+    }
+}
