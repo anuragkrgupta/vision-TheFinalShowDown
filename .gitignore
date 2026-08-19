@@ -25,3 +25,7 @@ yolov8n.pt
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Training Artifacts & Datasets
+dataset/
+runs/
