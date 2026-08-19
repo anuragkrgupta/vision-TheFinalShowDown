@@ -12,8 +12,14 @@ class NavigationDetector:
             self.config = json.load(f)
             
         self.target_classes = set(self.config.get("target_classes", []))
-        # Load YOLOv8 nano model (will auto-download on first run)
-        self.model = YOLO("yolov8n.pt")
+        
+        # Load YOLOv8 model from config, fallback to pretrained nano
+        model_path = self.config.get("model_path", "yolov8n.pt")
+        # If relative path is provided, resolve it relative to project root
+        if model_path != "yolov8n.pt":
+            model_path = str(Path(__file__).parent.parent / model_path)
+            
+        self.model = YOLO(model_path)
         
         # Build a mapping from YOLO's class IDs to class names to filter effectively
         self.names = self.model.names
@@ -42,10 +48,12 @@ class NavigationDetector:
                 if class_name in self.target_classes:
                     # Get bounding box coordinates [x1, y1, x2, y2]
                     xyxy = box.xyxy[0].tolist()
+                    xyxyn = box.xyxyn[0].tolist() # Normalized coordinates [0, 1]
                     detections.append({
                         "class_name": class_name,
                         "confidence": confidence,
-                        "bbox": xyxy
+                        "bbox": xyxy,
+                        "bbox_norm": xyxyn
                     })
                     
         return detections

@@ -3,6 +3,8 @@ import time
 from collections import deque
 from pathlib import Path
 from detection.detector import NavigationDetector
+from detection.spatial_analyzer import SpatialAnalyzer
+from detection.cooldown import EventCooldownManager
 
 class TemporalSmoother:
     """
@@ -42,6 +44,9 @@ class DetectionPipeline:
         n = smoothing_cfg.get("n_frames", 3)
         m = smoothing_cfg.get("m_required", 2)
         self.smoother = TemporalSmoother(n_frames=n, m_required=m)
+        
+        self.spatial_analyzer = SpatialAnalyzer()
+        self.cooldown_manager = EventCooldownManager()
 
     def process_image(self, image_path):
         """Processes a static image and returns raw detections."""
@@ -49,6 +54,37 @@ class DetectionPipeline:
         if frame is None:
             raise ValueError(f"Could not read image at {image_path}")
         return self.detector.detect(frame)
+
+    def process_frame(self, frame):
+        """
+        Runs the full pipeline on a single frame:
+        Inference -> Spatial -> Temporal Smoothing -> Cooldown
+        Returns the final events to be announced, and the spatial detections for drawing.
+        """
+        raw_detections = self.detector.detect(frame)
+        spatial_detections = self.spatial_analyzer.analyze(raw_detections)
+        
+        # Build set of unique event keys for the smoother
+        # Key format: "class_name|zone|proximity"
+        current_keys = set(f"{d['class_name']}|{d['zone']}|{d['proximity']}" for d in spatial_detections)
+        
+        # Get smoothed active keys
+        active_keys = self.smoother.update(current_keys)
+        
+        # Filter spatial detections to only those that are temporally active
+        active_detections = []
+        seen_keys = set()
+        for d in spatial_detections:
+            key = f"{d['class_name']}|{d['zone']}|{d['proximity']}"
+            # Only keep one instance of each key per frame to avoid duplicate announcements
+            if key in active_keys and key not in seen_keys:
+                active_detections.append(d)
+                seen_keys.add(key)
+                
+        # Filter through cooldown
+        emitted_events = self.cooldown_manager.filter(active_detections)
+        
+        return emitted_events, spatial_detections
 
     def process_video_offline(self, video_path, visualize=False):
         """
@@ -67,23 +103,25 @@ class DetectionPipeline:
             if not ret:
                 break
                 
-            detections = self.detector.detect(frame)
-            current_classes = set(d["class_name"] for d in detections)
-            active_classes = self.smoother.update(current_classes)
+            emitted_events, spatial_detections = self.process_frame(frame)
             
             timeline.append({
                 "frame": frame_idx,
-                "raw_detections": detections,
-                "smoothed_active_classes": list(active_classes)
+                "emitted_events": emitted_events
             })
             
             if visualize:
                 # Draw bounding boxes
-                for d in detections:
+                for d in spatial_detections:
                     x1, y1, x2, y2 = map(int, d["bbox"])
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(frame, d["class_name"], (x1, y1 - 10), 
+                    label = f"{d['class_name']} ({d['zone']}, {d['proximity']})"
+                    cv2.putText(frame, label, (x1, y1 - 10), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                
+                # Draw emitted events
+                if emitted_events:
+                    print(f"[Frame {frame_idx}] Emitted: {[(e['class_name'], e['zone'], e['proximity']) for e in emitted_events]}")
                 
                 cv2.imshow("Offline Video Test", frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -179,11 +217,13 @@ def process_live_stream(pipeline_self, duration_minutes=None, visualize=True, lo
             # Copy frame to avoid thread race condition during drawing
             disp_frame = frame.copy()
             
-            # Inference
-            detections = pipeline_self.detector.detect(disp_frame)
-            current_classes = set(d["class_name"] for d in detections)
-            active_classes = pipeline_self.smoother.update(current_classes)
+            # Full Pipeline
+            emitted_events, spatial_detections = pipeline_self.process_frame(disp_frame)
             
+            # Log emitted events to console so user can see what the voice WOULD say
+            if emitted_events:
+                print(f"[{datetime.datetime.now().time()}] Emitted: {[(e['class_name'], e['zone'], e['proximity']) for e in emitted_events]}")
+                
             # Calculate FPS
             frame_count += 1
             if loop_start - last_fps_time >= 1.0:
@@ -194,20 +234,24 @@ def process_live_stream(pipeline_self, duration_minutes=None, visualize=True, lo
                 if log_file and writer:
                     mem_mb = psutil.Process().memory_info().rss / (1024 * 1024)
                     timestamp = datetime.datetime.now().isoformat()
-                    writer.writerow([timestamp, f"{current_fps:.2f}", f"{mem_mb:.2f}", list(active_classes)])
+                    # Just logging active keys for now
+                    writer.writerow([timestamp, f"{current_fps:.2f}", f"{mem_mb:.2f}", str(emitted_events)])
                     csv_file.flush()
             
             if visualize:
                 # Draw info
                 cv2.putText(disp_frame, f"FPS: {current_fps:.1f} / Target: {target_fps}", (10, 30), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-                cv2.putText(disp_frame, f"Active: {list(active_classes)}", (10, 60), 
+                
+                # Draw emitted events count as active
+                cv2.putText(disp_frame, f"Emitted this frame: {len(emitted_events)}", (10, 60), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                 
-                for d in detections:
+                for d in spatial_detections:
                     x1, y1, x2, y2 = map(int, d["bbox"])
                     cv2.rectangle(disp_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(disp_frame, f"{d['class_name']} {d['confidence']:.2f}", (x1, y1 - 10), 
+                    label = f"{d['class_name']} {d['confidence']:.2f} ({d['zone']}, {d['proximity']})"
+                    cv2.putText(disp_frame, label, (x1, y1 - 10), 
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                                 
                 cv2.imshow("Live Detection", disp_frame)

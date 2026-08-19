@@ -29,3 +29,6 @@ Thumbs.db
 # Training Artifacts & Datasets
 dataset/
 runs/
+
+# Testing
+tests/
