@@ -45,6 +45,30 @@ All system parameters are easily configurable via `config/detection_config.json`
 - Adjust `zone_boundaries` to shift the definitions of Left/Center/Right.
 - Adjust `cooldown_seconds` to control how often repeat events are emitted.
 
+## Usage & Startup
+
+**Run Live Software (Webcam)**
+To start the full pipeline using your computer's webcam:
+```powershell
+# Make sure your virtual environment is activated
+.\venv\Scripts\python.exe main.py
+```
+*Note: A window will appear showing the live feed with bounding boxes, spatial zones, and the actual events the system emits will be printed to your console.*
+
+**Run Offline Visual Tests**
+To verify the system's behavior against the suite of sample videos (ideal for testing cooldowns and zones without physically moving around):
+```powershell
+$env:PYTHONPATH="C:\Users\kumar\Desktop\VISION"
+.\venv\Scripts\python.exe tests\run_videos_visual.py
+```
+
+**Run Automated Unit Tests**
+To run the automated test suite (verifying spatial math, cooldown logic, etc.):
+```powershell
+$env:PYTHONPATH="C:\Users\kumar\Desktop\VISION"
+.\venv\Scripts\pytest.exe tests\
+```
+
 ## Roadmap / Pending Phases
 
 - [ ] **Text-to-Speech (TTS):** Integrate `pyttsx3` to announce the emitted events audibly.
