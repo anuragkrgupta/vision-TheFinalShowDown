@@ -1,5 +1,8 @@
 {
-  "model_path": "models/best_custom_yolov8n.pt",
+  "model_paths": [
+    "models/best_custom_yolov8n.pt",
+    "runs/detect/runs/detect/master_pothole_model/weights/best.pt"
+  ],
   "target_fps": 5.0,
   "soak_test_duration_minutes": 30,
   "temporal_smoothing": {
@@ -25,6 +28,7 @@
     "train",
     "truck",
     "traffic light",
-    "stop sign"
+    "stop sign",
+    "pothole"
   ]
 }

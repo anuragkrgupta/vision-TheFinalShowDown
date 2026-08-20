@@ -13,47 +13,50 @@ class NavigationDetector:
             
         self.target_classes = set(self.config.get("target_classes", []))
         
-        # Load YOLOv8 model from config, fallback to pretrained nano
-        model_path = self.config.get("model_path", "yolov8n.pt")
-        # If relative path is provided, resolve it relative to project root
-        if model_path != "yolov8n.pt":
-            model_path = str(Path(__file__).parent.parent / model_path)
+        # Load YOLOv8 models from config, fallback to a single pretrained nano
+        model_paths = self.config.get("model_paths", [])
+        if not model_paths:
+            # Backwards compatibility if they still use 'model_path'
+            single_path = self.config.get("model_path", "yolov8n.pt")
+            model_paths = [single_path]
             
-        self.model = YOLO(model_path)
+        self.models = []
+        for path_str in model_paths:
+            if path_str != "yolov8n.pt":
+                path_str = str(Path(__file__).parent.parent / path_str)
+            self.models.append(YOLO(path_str))
         
         # Build a mapping from YOLO's class IDs to class names to filter effectively
-        self.names = self.model.names
-        self.target_class_ids = [
-            class_id for class_id, class_name in self.names.items() 
-            if class_name in self.target_classes
-        ]
+        # Each model might have different names mappings, so we handle it per-model
+        # during inference.
 
     def detect(self, frame):
         """
-        Runs inference on a single frame and returns filtered detections.
+        Runs inference on a single frame using all loaded models and returns filtered detections.
         """
-        # Run inference (stream=False for single frame)
-        # verbose=False to keep console clean during loops
-        results = self.model(frame, verbose=False)
-        
         detections = []
-        for result in results:
-            boxes = result.boxes
-            for box in boxes:
-                cls_id = int(box.cls[0].item())
-                confidence = box.conf[0].item()
-                class_name = self.names[cls_id]
-                
-                # Filter by config
-                if class_name in self.target_classes:
-                    # Get bounding box coordinates [x1, y1, x2, y2]
-                    xyxy = box.xyxy[0].tolist()
-                    xyxyn = box.xyxyn[0].tolist() # Normalized coordinates [0, 1]
-                    detections.append({
-                        "class_name": class_name,
-                        "confidence": confidence,
-                        "bbox": xyxy,
-                        "bbox_norm": xyxyn
-                    })
+        
+        for model in self.models:
+            # Run inference (stream=False for single frame, verbose=False to keep console clean)
+            results = model(frame, verbose=False)
+            
+            for result in results:
+                boxes = result.boxes
+                for box in boxes:
+                    cls_id = int(box.cls[0].item())
+                    confidence = box.conf[0].item()
+                    class_name = model.names[cls_id]
                     
+                    # Filter by config
+                    if class_name in self.target_classes:
+                        # Get bounding box coordinates [x1, y1, x2, y2]
+                        xyxy = box.xyxy[0].tolist()
+                        xyxyn = box.xyxyn[0].tolist() # Normalized coordinates [0, 1]
+                        detections.append({
+                            "class_name": class_name,
+                            "confidence": confidence,
+                            "bbox": xyxy,
+                            "bbox_norm": xyxyn
+                        })
+                        
         return detections

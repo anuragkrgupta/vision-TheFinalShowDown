@@ -5,6 +5,8 @@ from pathlib import Path
 from detection.detector import NavigationDetector
 from detection.spatial_analyzer import SpatialAnalyzer
 from detection.cooldown import EventCooldownManager
+from audio.voice_engine import AudioOrchestrator, VoiceEvent
+from backend.ocr_client import OCRClient
 
 class TemporalSmoother:
     """
@@ -47,6 +49,14 @@ class DetectionPipeline:
         
         self.spatial_analyzer = SpatialAnalyzer()
         self.cooldown_manager = EventCooldownManager()
+        
+        try:
+            self.audio_engine = AudioOrchestrator()
+        except Exception as e:
+            print(f"Failed to initialize audio engine: {e}")
+            self.audio_engine = None
+            
+        self.ocr_client = OCRClient(audio_engine=self.audio_engine)
 
     def process_image(self, image_path):
         """Processes a static image and returns raw detections."""
@@ -224,6 +234,23 @@ def process_live_stream(pipeline_self, duration_minutes=None, visualize=True, lo
             if emitted_events:
                 print(f"[{datetime.datetime.now().time()}] Emitted: {[(e['class_name'], e['zone'], e['proximity']) for e in emitted_events]}")
                 
+                # Push to audio engine
+                if getattr(pipeline_self, 'audio_engine', None) is not None:
+                    for e in emitted_events:
+                        # Priority: 0 if Center, else 1
+                        priority = 0 if e['zone'] == 'Center' else 1
+                        text = f"{e['zone']}, {e['class_name']}"
+                        
+                        event = VoiceEvent(
+                            priority=priority,
+                            timestamp=time.time(),
+                            text=text,
+                            class_name=e['class_name'],
+                            zone=e['zone'],
+                            distance_band=e['proximity']
+                        )
+                        pipeline_self.audio_engine.enqueue(event)
+                
             # Calculate FPS
             frame_count += 1
             if loop_start - last_fps_time >= 1.0:
@@ -234,8 +261,9 @@ def process_live_stream(pipeline_self, duration_minutes=None, visualize=True, lo
                 if log_file and writer:
                     mem_mb = psutil.Process().memory_info().rss / (1024 * 1024)
                     timestamp = datetime.datetime.now().isoformat()
-                    # Just logging active keys for now
-                    writer.writerow([timestamp, f"{current_fps:.2f}", f"{mem_mb:.2f}", str(emitted_events)])
+                    # Log emitted events safely
+                    events_str = str([(e['class_name'], e['zone'], e['proximity']) for e in emitted_events]) if emitted_events else "[]"
+                    writer.writerow([timestamp, f"{current_fps:.2f}", f"{mem_mb:.2f}", events_str])
                     csv_file.flush()
             
             if visualize:
@@ -255,8 +283,21 @@ def process_live_stream(pipeline_self, duration_minutes=None, visualize=True, lo
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                                 
                 cv2.imshow("Live Detection", disp_frame)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
                     break
+                elif key == ord('r'):
+                    print("OCR trigger activated! Capturing frame...")
+                    # Give an immediate auditory feedback
+                    if pipeline_self.audio_engine:
+                        pipeline_self.audio_engine.enqueue(VoiceEvent(
+                            priority=3,
+                            timestamp=time.time(),
+                            text="Scanning...",
+                            class_name="system",
+                            zone="Center"
+                        ))
+                    pipeline_self.ocr_client.send_frame(frame)
                     
             # Enforce target FPS
             loop_end = time.time()
