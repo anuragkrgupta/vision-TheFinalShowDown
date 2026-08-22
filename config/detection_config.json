@@ -1,7 +1,10 @@
 {
   "model_paths": [
     "models/best_custom_yolov8n.pt",
-    "runs/detect/runs/detect/master_pothole_model/weights/best.pt"
+    "runs/detect/runs/detect/master_pothole_model/weights/best.pt",
+    "runs/detect/runs/detect/hazards_model/weights/best.pt",
+    "runs/detect/runs/detect/custom_person_model/weights/best.pt",
+    "runs/detect/runs/detect/custom_traffic_model/weights/best.pt"
   ],
   "target_fps": 5.0,
   "soak_test_duration_minutes": 30,
@@ -29,6 +32,7 @@
     "truck",
     "traffic light",
     "stop sign",
-    "pothole"
+    "pothole",
+    "stairs"
   ]
 }
