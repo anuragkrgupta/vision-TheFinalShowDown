@@ -4,7 +4,9 @@
     "runs/detect/runs/detect/master_pothole_model/weights/best.pt",
     "runs/detect/runs/detect/hazards_model/weights/best.pt",
     "runs/detect/runs/detect/custom_person_model/weights/best.pt",
-    "runs/detect/runs/detect/custom_traffic_model/weights/best.pt"
+    "runs/detect/runs/detect/custom_traffic_model/weights/best.pt",
+    "runs/detect/runs/detect/traffic_signs_model/weights/best.pt",
+    "runs/detect/runs/detect/indoor_objects_model/weights/best.pt"
   ],
   "target_fps": 5.0,
   "soak_test_duration_minutes": 30,
@@ -18,8 +20,8 @@
     "center_to_right": 0.66
   },
   "proximity_proxy_thresholds": {
-    "near_area_ratio": 0.30,
-    "mid_area_ratio": 0.10
+    "near_area_ratio": 0.3,
+    "mid_area_ratio": 0.1
   },
   "cooldown_seconds": 5.0,
   "target_classes": [
@@ -33,6 +35,31 @@
     "traffic light",
     "stop sign",
     "pothole",
-    "stairs"
+    "stairs",
+    "Green Light",
+    "Red Light",
+    "Speed Limit 10",
+    "Speed Limit 100",
+    "Speed Limit 110",
+    "Speed Limit 120",
+    "Speed Limit 20",
+    "Speed Limit 30",
+    "Speed Limit 40",
+    "Speed Limit 50",
+    "Speed Limit 60",
+    "Speed Limit 70",
+    "Speed Limit 80",
+    "Speed Limit 90",
+    "Stop",
+    "door",
+    "cabinetDoor",
+    "refrigeratorDoor",
+    "window",
+    "chair",
+    "table",
+    "cabinet",
+    "couch",
+    "openedDoor",
+    "pole"
   ]
 }

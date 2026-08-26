@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Model Real-time Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #333;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .info {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        video {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 70vh;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirror the video visually */
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            /* Note: We mirror the canvas too, so coordinates from the mirrored server frame align perfectly */
+            transform: scaleX(-1);
+        }
+
+        .partition-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-left: 1px dashed rgba(255, 255, 255, 0.6);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .line-left { left: 33.33%; }
+        .line-right { left: 66.66%; }
+
+        .partition-label {
+            position: absolute;
+            top: 10px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: clamp(12px, 3vw, 16px);
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+            z-index: 10;
+        }
+
+        .label-left { left: 16.66%; transform: translateX(-50%); }
+        .label-center { left: 50%; transform: translateX(-50%); }
+        .label-right { left: 83.33%; transform: translateX(-50%); }
+
+        .output-panel {
+            margin-top: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+        }
+
+        .output-panel h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .detection-name {
+            font-size: clamp(1.5rem, 5vw, 2.2rem);
+            font-weight: bold;
+            color: #007bff;
+            margin-top: 10px;
+            min-height: 42px;
+            word-wrap: break-word;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+            flex: 1;
+            min-width: 140px;
+            max-width: 200px;
+            touch-action: manipulation;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #stopBtn {
+            background-color: #dc3545;
+        }
+        
+        #stopBtn:hover:not(:disabled) {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Real-time Model Inference</h1>
+    <div class="info">Mobile-ready continuous camera feed linked to your YOLO backend.</div>
+
+    <div class="container">
+        <!-- Video Feed -->
+        <video id="webcam" autoplay playsinline muted></video>
+        <!-- Canvas for bounding boxes -->
+        <canvas id="overlay"></canvas>
+        
+        <!-- Faded division lines -->
+        <div class="partition-line line-left"></div>
+        <div class="partition-line line-right"></div>
+
+        <!-- Partition Labels -->
+        <div class="partition-label label-left">LEFT</div>
+        <div class="partition-label label-center">CENTER</div>
+        <div class="partition-label label-right">RIGHT</div>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn">Start Camera</button>
+        <button id="stopBtn" disabled>Stop Camera</button>
+    </div>
+
+    <div class="output-panel">
+        <h2>Detected Object</h2>
+        <div class="detection-name" id="detectionName">Waiting...</div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const detectionName = document.getElementById('detectionName');
+        const canvas = document.getElementById('overlay');
+        const ctx = canvas.getContext('2d');
+
+        let stream = null;
+        let inferenceInterval = null;
+        let lastSpokenItem = null;
+        let ws = null;
+        let isProcessing = false;
+
+        // Hidden canvas for extracting frames
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                const constraints = {
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                detectionName.textContent = "Connecting to model...";
+                detectionName.style.color = "#666";
+
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    tempCanvas.width = video.videoWidth;
+                    tempCanvas.height = video.videoHeight;
+                    
+                    // Connect WebSocket to Python Server
+                    let protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    // If opening file directly (not via server), fallback to localhost
+                    let host = window.location.host || '127.0.0.1:8000'; 
+                    ws = new WebSocket(`${protocol}//${host}/ws/detect`);
+
+                    ws.onopen = () => {
+                        console.log("WebSocket connected!");
+                        startInferenceLoop();
+                    };
+
+                    ws.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        handleDetections(data.detections);
+                        isProcessing = false; // ready for next frame
+                    };
+
+                    ws.onerror = (e) => {
+                        console.error("WebSocket Error:", e);
+                        detectionName.textContent = "Server Connection Error";
+                        detectionName.style.color = "red";
+                    };
+
+                    ws.onclose = () => {
+                        console.log("WebSocket disconnected.");
+                    };
+                };
+
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance("Camera started");
+                    utterance.volume = 0; 
+                    window.speechSynthesis.speak(utterance);
+                }
+
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                alert("Could not access camera.");
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            if (ws) {
+                ws.close();
+            }
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            detectionName.textContent = "Waiting...";
+            detectionName.style.color = "#007bff";
+            lastSpokenItem = null;
+            stopInferenceLoop();
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        function announceDetection(text) {
+            if ('speechSynthesis' in window && text !== "None") {
+                if (text !== lastSpokenItem) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 1.1;
+                    window.speechSynthesis.speak(utterance);
+                    lastSpokenItem = text;
+                }
+            } else if (text === "None") {
+                lastSpokenItem = null;
+            }
+        }
+
+        function handleDetections(detections) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (detections && detections.length > 0) {
+                // Determine highest confidence detection for main display
+                let topDetect = detections[0];
+                for(let i=1; i<detections.length; i++){
+                    if(detections[i].confidence > topDetect.confidence) topDetect = detections[i];
+                }
+                
+                detectionName.textContent = topDetect.class_name;
+                detectionName.style.color = "#28a745";
+                
+                // Construct a helpful voice phrase: e.g. "Person in Center, Near"
+                const voicePhrase = `${topDetect.class_name} in ${topDetect.zone}, ${topDetect.proximity}`;
+                announceDetection(voicePhrase);
+                
+                // Draw bounding boxes for all detections
+                detections.forEach(d => {
+                    const [x1, y1, x2, y2] = d.bbox;
+                    const w = x2 - x1;
+                    const h = y2 - y1;
+                    
+                    ctx.strokeStyle = '#00FF00';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x1, y1, w, h);
+                    
+                    ctx.fillStyle = '#00FF00';
+                    ctx.font = 'bold 18px Arial';
+                    // Optional text shadow for readability
+                    ctx.shadowColor = "black";
+                    ctx.shadowBlur = 4;
+                    ctx.shadowOffsetX = 1;
+                    ctx.shadowOffsetY = 1;
+                    ctx.fillText(`${d.class_name} ${(d.confidence*100).toFixed(0)}%`, x1, y1 > 20 ? y1 - 8 : 25);
+                    ctx.shadowBlur = 0; // reset
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                });
+            } else {
+                detectionName.textContent = "No object detected";
+                detectionName.style.color = "#666";
+                announceDetection("None");
+            }
+        }
+
+        function startInferenceLoop() {
+            let lastCaptureTime = 0;
+            const FPS = 10; 
+            const captureIntervalMs = 1000 / FPS;
+
+            function processFrame(timestamp) {
+                if (!stream || !video.srcObject || ws.readyState !== WebSocket.OPEN) return;
+
+                if (timestamp - lastCaptureTime >= captureIntervalMs && !isProcessing) {
+                    lastCaptureTime = timestamp;
+                    isProcessing = true;
+                    
+                    // Capture current frame
+                    tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+                    
+                    // Send as JPEG Base64
+                    const frameBase64 = tempCanvas.toDataURL('image/jpeg', 0.6); // 60% quality is enough for detection
+                    ws.send(frameBase64);
+                }
+
+                inferenceInterval = requestAnimationFrame(processFrame);
+            }
+            inferenceInterval = requestAnimationFrame(processFrame);
+        }
+
+        function stopInferenceLoop() {
+            if (inferenceInterval) {
+                cancelAnimationFrame(inferenceInterval);
+                inferenceInterval = null;
+            }
+            isProcessing = false;
+        }
+
+        window.addEventListener('resize', () => {
+            if (video.videoWidth) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                tempCanvas.width = video.videoWidth;
+                tempCanvas.height = video.videoHeight;
+            }
+        });
+    </script>
+</body>
+</html>
