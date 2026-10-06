@@ -1,7 +1,6 @@
 import streamlit as st
 import cv2
 import av
-import numpy as np
 from detection.pipeline import DetectionPipeline
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
@@ -11,7 +10,7 @@ st.title("Vision Assistant - Real-Time Detection")
 st.write("This application runs a live computer-vision detection pipeline directly in your browser using WebRTC.")
 
 # Cache the pipeline so it is initialized only once and not on every UI interaction.
-# This prevents the heavy ML models from being reloaded and avoids spawning multiple Audio/TTS threads.
+# This prevents the heavy ML models from being reloaded.
 @st.cache_resource
 def load_pipeline():
     return DetectionPipeline()

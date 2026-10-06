@@ -1,7 +1,4 @@
-import cv2
-import time
 from collections import deque
-from pathlib import Path
 from detection.detector import NavigationDetector
 from detection.spatial_analyzer import SpatialAnalyzer
 from detection.cooldown import EventCooldownManager
@@ -50,12 +47,7 @@ class DetectionPipeline:
         self.cooldown_manager = EventCooldownManager()
         
 
-    def process_image(self, image_path):
-        """Processes a static image and returns raw detections."""
-        frame = cv2.imread(str(image_path))
-        if frame is None:
-            raise ValueError(f"Could not read image at {image_path}")
-        return self.detector.detect(frame)
+
 
     def process_frame(self, frame):
         """
