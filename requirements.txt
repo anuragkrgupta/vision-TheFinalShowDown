@@ -1,11 +1,6 @@
 ultralytics
-fastapi
-pyttsx3
-uvicorn
-websockets
 opencv-python-headless
 numpy
-psutil
 streamlit
 streamlit-webrtc
 av

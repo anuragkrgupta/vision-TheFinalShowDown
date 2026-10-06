@@ -70,12 +70,23 @@ class VideoProcessor(VideoTransformerBase):
 
 st.markdown("### Live Webcam Feed")
 
+# Build ICE server configuration
+ice_servers = [{"urls": ["stun:stun.l.google.com:19302"]}]
+
+# Add TURN server if credentials are provided in Streamlit Secrets
+if hasattr(st, "secrets") and "TURN_SERVER" in st.secrets:
+    ice_servers.append({
+        "urls": [st.secrets["TURN_SERVER"]],
+        "username": st.secrets["TURN_USERNAME"],
+        "credential": st.secrets["TURN_CREDENTIAL"],
+    })
+
 # Streamlit-WebRTC component to handle the video stream
 webrtc_streamer(
     key="vision-assistant",
     video_processor_factory=VideoProcessor,
     rtc_configuration={
-        "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
+        "iceServers": ice_servers
     },
     media_stream_constraints={"video": True, "audio": False},
 )
