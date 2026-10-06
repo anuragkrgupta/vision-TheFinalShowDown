@@ -8,3 +8,5 @@ psutil
 streamlit
 streamlit-webrtc
 av
+python-3.12
+pyttsx3
