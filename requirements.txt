@@ -5,3 +5,6 @@ websockets
 opencv-python-headless
 numpy
 psutil
+streamlit
+streamlit-webrtc
+av
