@@ -50,7 +50,7 @@ train: images/train
 val: images/val
 
 nc: 3
-names: ['door', 'window', 'stairs']
+names: ['door', 'stairs', 'window']
 """
     yaml_path = os.path.join(dst_dir, "data.yaml")
     with open(yaml_path, 'w') as f:
