@@ -88,9 +88,12 @@ model_test_visual_review.md
 stairs_model_diagnosis.md
 
 # ==============================
-# Generated evaluation artifacts
+# Local test outputs & evaluation scripts
 # ==============================
-audit_dataset.py
+/test_output.jpg
+/soak_metrics.csv
+/audit_dataset.py
+/test_model_categories.py
 
 # ==============================
 # Jupyter
