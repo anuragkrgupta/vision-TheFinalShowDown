@@ -17,6 +17,8 @@ dist/
 venv/
 env/
 ENV/
+env.bak/
+venv.bak/
 
 # ==============================
 # Environment variables & secrets
@@ -28,6 +30,7 @@ ENV/
 *.key
 secrets/
 credentials.json
+.streamlit/secrets.toml
 
 # ==============================
 # Machine-specific files
@@ -69,6 +72,8 @@ dataset/hazards_dataset/*
 *.engine
 *.tflite
 *.weights
+*.safetensors
+*.bin
 
 # ==============================
 # YOLO training outputs
@@ -92,6 +97,7 @@ stairs_model_diagnosis.md
 # ==============================
 /test_output.jpg
 /soak_metrics.csv
+/live_soak_metrics.csv
 /audit_dataset.py
 /test_model_categories.py
 

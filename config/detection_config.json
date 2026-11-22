@@ -1,6 +1,7 @@
 {
   "model_paths": [
-    "models/best_custom_yolov8n.pt"
+    "models/best_custom_yolov8n.pt",
+    "runs/detect/runs/detect/hazards_model/weights/best.pt"
   ],
   "target_fps": 5.0,
   "soak_test_duration_minutes": 30,

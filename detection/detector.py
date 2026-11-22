@@ -24,7 +24,11 @@ class NavigationDetector:
         for path_str in model_paths:
             if path_str != "yolov8n.pt":
                 path_str = str(Path(__file__).parent.parent / path_str)
-            self.models.append(YOLO(path_str))
+            model = YOLO(path_str)
+            # In-memory mapping correction for hazards model if uncorrected checkpoint is loaded
+            if "hazards_model" in path_str and model.names == {0: "door", 1: "window", 2: "stairs"}:
+                model.model.names = {0: "door", 1: "stairs", 2: "window"}
+            self.models.append(model)
         
         # Build a mapping from YOLO's class IDs to class names to filter effectively
         # Each model might have different names mappings, so we handle it per-model
