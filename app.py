@@ -2,7 +2,7 @@ import streamlit as st
 import cv2
 import av
 from detection.pipeline import DetectionPipeline
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 
 st.set_page_config(page_title="Vision Assistant", layout="wide")
 
@@ -17,7 +17,7 @@ def load_pipeline():
 
 pipeline = load_pipeline()
 
-class VideoProcessor(VideoTransformerBase):
+class VideoProcessor(VideoProcessorBase):
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
         # Convert incoming WebRTC frame to NumPy/OpenCV BGR format
         img = frame.to_ndarray(format="bgr24")
@@ -72,10 +72,15 @@ st.markdown("### Live Webcam Feed")
 # Build ICE server configuration
 ice_servers = [{"urls": ["stun:stun.l.google.com:19302"]}]
 
-# Add TURN server if credentials are provided in Streamlit Secrets
-if hasattr(st, "secrets") and "TURN_SERVER" in st.secrets:
+# Add TURN server only when credentials are configured
+try:
+    turn_server = st.secrets.get("TURN_SERVER")
+except (FileNotFoundError, KeyError):
+    turn_server = None
+
+if turn_server:
     ice_servers.append({
-        "urls": [st.secrets["TURN_SERVER"]],
+        "urls": [turn_server],
         "username": st.secrets["TURN_USERNAME"],
         "credential": st.secrets["TURN_CREDENTIAL"],
     })

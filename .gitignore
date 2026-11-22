@@ -75,12 +75,30 @@ dataset/hazards_dataset/*
 *.safetensors
 *.bin
 
+# Explicit exceptions for essential production models
+!models/best_custom_yolov8n.pt
+!runs/detect/runs/detect/hazards_model/weights/best.pt
+
 # ==============================
 # YOLO training outputs
 # ==============================
-runs/
 wandb/
 mlruns/
+*.tfevents*
+
+# Exclude YOLO training runs while allowing narrow exception for production hazards model
+runs/*
+!runs/detect/
+runs/detect/*
+!runs/detect/runs/
+runs/detect/runs/*
+!runs/detect/runs/detect/
+runs/detect/runs/detect/*
+!runs/detect/runs/detect/hazards_model/
+runs/detect/runs/detect/hazards_model/*
+!runs/detect/runs/detect/hazards_model/weights/
+runs/detect/runs/detect/hazards_model/weights/*
+!runs/detect/runs/detect/hazards_model/weights/best.pt
 
 # ==============================
 # Model evaluation outputs
@@ -107,13 +125,15 @@ stairs_model_diagnosis.md
 .ipynb_checkpoints/
 
 # ==============================
-# Test and coverage artifacts
+# Test, typing, and coverage artifacts
 # ==============================
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 .nox/
+.mypy_cache/
+.ruff_cache/
 
 # ==============================
 # Node.js (if used)

@@ -1,5 +1,7 @@
 import json
 from pathlib import Path
+import torch
+import torchvision
 from ultralytics import YOLO
 
 class NavigationDetector:
@@ -12,6 +14,9 @@ class NavigationDetector:
             self.config = json.load(f)
             
         self.target_classes = set(self.config.get("target_classes", []))
+        
+        # Determine safest execution device (avoid CUDA NMS mismatch if torchvision is CPU-only)
+        self.device = "cuda" if (torch.cuda.is_available() and "+cpu" not in getattr(torchvision, "__version__", "")) else "cpu"
         
         # Load YOLOv8 models from config, fallback to a single pretrained nano
         model_paths = self.config.get("model_paths", [])
@@ -42,7 +47,7 @@ class NavigationDetector:
         
         for model in self.models:
             # Run inference (stream=False for single frame, verbose=False to keep console clean)
-            results = model(frame, verbose=False)
+            results = model(frame, verbose=False, device=self.device)
             
             for result in results:
                 boxes = result.boxes
